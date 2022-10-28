@@ -1,20 +1,37 @@
 package main
 
 import (
+	"bytes"
+	"embed"
 	"flag"
 	"fmt"
 
 	"github.com/xuri/excelize/v2"
 )
 
+//go:embed  template_add.xlsx template_remove.xlsx
+var content embed.FS
+
 var (
 	filename      = flag.String("filename", "vendors.xlsx", "file to split")
 	rowsPersheet  = flag.Int("rows", 10000, "number of rows per sheet in new file")
 	paymentMethod = flag.String("payment-method", "default", "number of rows per sheet in new file")
+	operation     = flag.String("operation", "add", "add/remove payment method for vendor code")
 )
 
 func main() {
 	flag.Parse()
+
+	var templateFile = "template_add.xlsx"
+	if *operation == "remove" {
+		templateFile = "template_remove.xlsx"
+	}
+
+	data, err := content.ReadFile(templateFile)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	f, err := excelize.OpenFile(*filename)
 	if err != nil {
@@ -38,18 +55,6 @@ func main() {
 		rows = rows[1:]
 		var file *excelize.File
 
-		file = excelize.NewFile()
-
-		err = file.SetCellValue("sheet1", fmt.Sprintf("A%d", 1), "vendor_code")
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		err = file.SetCellValue("sheet1", fmt.Sprintf("B%d", 1), "add")
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
 		countFile := 0
 		rowReset := 1
 		var chunks [][][]string
@@ -66,27 +71,23 @@ func main() {
 
 		for i := 0; i < len(chunks); i++ {
 			rows := chunks[i]
-			file = excelize.NewFile()
+			file, err = excelize.OpenReader(bytes.NewReader(data))
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 			rowReset = 1
-			err = file.SetCellValue("sheet1", fmt.Sprintf("A%d", 1), "vendor_code")
-			if err != nil {
-				panic(err)
-			}
-			err = file.SetCellValue("sheet1", fmt.Sprintf("B%d", 1), "add")
-			if err != nil {
-				panic(err)
-			}
 
 			for _, row := range rows {
 				rowReset += 1
 				for i, colCell := range row {
 					if i == 0 {
-						err := file.SetCellValue("sheet1", fmt.Sprintf("A%d", rowReset), colCell)
+						err := file.SetCellValue("VendorPaymentTypes", fmt.Sprintf("A%d", rowReset), colCell)
 						if err != nil {
 							fmt.Println(err)
 							return
 						}
-						err = file.SetCellValue("sheet1", fmt.Sprintf("B%d", rowReset), *paymentMethod)
+						err = file.SetCellValue("VendorPaymentTypes", fmt.Sprintf("B%d", rowReset), *paymentMethod)
 						if err != nil {
 							fmt.Println(err)
 							return
