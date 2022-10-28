@@ -1,14 +1,21 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"math"
 
 	"github.com/xuri/excelize/v2"
 )
 
+var (
+	filename     = flag.String("filename", "vendors.xlsx", "file to split")
+	rowsPersheet = flag.Int("rows", 10000, "number of rows per sheet in new file")
+)
+
 func main() {
-	f, err := excelize.OpenFile("vendors.xlsx")
+	flag.Parse()
+	
+	f, err := excelize.OpenFile(*filename)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -20,36 +27,32 @@ func main() {
 		}
 	}()
 
-	rows, err := f.GetRows("result")
+	rows, err := f.GetRows(f.GetSheetName(0))
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	if len(rows) > 0 {
-
 		rows = rows[1:]
-
-		totalSheets := int(math.Ceil(float64(len(rows)/10000))) + 2
-
-		fmt.Println(totalSheets)
-
 		var file *excelize.File
 
 		file = excelize.NewFile()
 
 		err = file.SetCellValue("sheet1", fmt.Sprintf("A%d", 1), "vendor_code")
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			return
 		}
 		err = file.SetCellValue("sheet1", fmt.Sprintf("B%d", 1), "add")
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			return
 		}
 		countFile := 0
 		rowReset := 1
 		var chunks [][][]string
-		chunkSize := 10000
+		chunkSize := *rowsPersheet
 		for i := 0; i < len(rows); i += chunkSize {
 			end := i + chunkSize
 			// necessary check to avoid slicing beyond
@@ -79,13 +82,15 @@ func main() {
 					if i == 0 {
 						err := file.SetCellValue("sheet1", fmt.Sprintf("A%d", rowReset), colCell)
 						if err != nil {
-							panic(err)
+							fmt.Println(err)
+							return
 						}
 					}
 					if i == 1 {
 						err := file.SetCellValue("sheet1", fmt.Sprintf("B%d", rowReset), colCell)
 						if err != nil {
-							panic(err)
+							fmt.Println(err)
+							return
 						}
 					}
 				}
@@ -93,12 +98,14 @@ func main() {
 
 			err := file.SaveAs(fmt.Sprintf("vendorCode_%d.xlsx", countFile))
 			if err != nil {
-				panic(err)
+				fmt.Println(err)
+				return
 			}
 
 			err = file.Close()
 			if err != nil {
-				panic(err)
+				fmt.Println(err)
+				return
 			}
 			countFile += 1
 		}
