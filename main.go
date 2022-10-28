@@ -8,13 +8,14 @@ import (
 )
 
 var (
-	filename     = flag.String("filename", "vendors.xlsx", "file to split")
-	rowsPersheet = flag.Int("rows", 10000, "number of rows per sheet in new file")
+	filename      = flag.String("filename", "vendors.xlsx", "file to split")
+	rowsPersheet  = flag.Int("rows", 10000, "number of rows per sheet in new file")
+	paymentMethod = flag.String("payment-method", "default", "number of rows per sheet in new file")
 )
 
 func main() {
 	flag.Parse()
-	
+
 	f, err := excelize.OpenFile(*filename)
 	if err != nil {
 		fmt.Println(err)
@@ -85,9 +86,7 @@ func main() {
 							fmt.Println(err)
 							return
 						}
-					}
-					if i == 1 {
-						err := file.SetCellValue("sheet1", fmt.Sprintf("B%d", rowReset), colCell)
+						err = file.SetCellValue("sheet1", fmt.Sprintf("B%d", rowReset), *paymentMethod)
 						if err != nil {
 							fmt.Println(err)
 							return
@@ -109,5 +108,7 @@ func main() {
 			}
 			countFile += 1
 		}
+	} else {
+		fmt.Printf("%s is empty", *filename)
 	}
 }
